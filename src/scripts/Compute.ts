@@ -1,17 +1,17 @@
-import {mat, vec, Matrix, Vector, VectorBuilder, zeros} from '@josh-brown/vector';
+import {Matrix, Vector, zeros} from '@josh-brown/vector';
 
 
 export class ModelSetRn {
     k: number;
-    G: Matrix<number>;
-    H: Matrix<number>;
-    W : (x : Vector<number>) => boolean;
+    G: Matrix;
+    H: Matrix;
+    W : (x : Vector) => boolean;
     L : number;
     bounds : number;
-    lattice: Vector<number>[] = [];
+    lattice: Vector[] = [];
 
 
-    constructor(k: number, G: Matrix<number>, H: Matrix<number>, W: (x: Vector<number>) => boolean, L: number, bounds: number) {
+    constructor(k: number, G: Matrix, H: Matrix, W: (x: Vector) => boolean, L: number, bounds: number) {
         this.k = k;
         this.G = G;
         this.H = H;
@@ -27,15 +27,13 @@ export class ModelSetRn {
         console.log(range);
         for (let n = 0; n < this.k+2; n++){
             let dir = builder.elementaryVector(this.k+2, n);
-            let new_lattice = this.lattice
+            this.lattice = this.lattice
                 .map(x => range.map(j => x.add(dir.scalarMultiply(j))))
                 .reduce((accumulator, value) => accumulator.concat(value), []);
-            this.lattice = new_lattice;
         }
-        console.log(this.lattice.length)
     }
 
-    private in_set(x : Vector<number>): boolean{
+    private in_set(x : Vector): boolean{
         let physical = this.G.apply(x);
         let accept_physical = (physical.getEntry(0) < this.L) && (physical.getEntry(0) > -this.L)  && (physical.getEntry(1) < this.L) && (physical.getEntry(1) > -this.L)
         let internal = this.H.apply(x);
@@ -43,12 +41,12 @@ export class ModelSetRn {
         return accept_physical && accept_internal;
     }
 
-    private computePoints_big(x0 : Vector<number>) : Vector<number>[]{
+    private computePoints_big() : Vector[]{
         this.generate_lattice()
         return this.lattice.filter(x => this.in_set(x));
     }
 
-    computePoints(x0 : Vector<number>) : Vector<number>[]{
-        return this.computePoints_big(x0).filter(x => this.in_set(x));
+    computePoints() : Vector[]{
+        return this.computePoints_big().filter(x => this.in_set(x));
     }
 }
