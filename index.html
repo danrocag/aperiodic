@@ -3,10 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <title>Aperiodic tilings</title>
-</head>
+    <link>
+<link rel="stylesheet" href="/scripts.2ed900e3.css"></head>
 <body>
-<div id="container">
+<div class="container">
+    <div class="row mt-2 ml-1 form-row">
+        <div class="form-group">
+            <label for="L">Window size</label>
+            <input type="range" class="form-control-range" id="L" min="1" max="4">
+        </div>
+        <button class="btn btn-primary" id="compute">Compute</button>
+    </div>
 
+    <div class="row mt-1 ml-1">
+        <div id="container" class="border-dark">
+
+        </div>
+    </div>
 </div>
 <script src="/scripts.2ed900e3.js"></script>
 </body>
