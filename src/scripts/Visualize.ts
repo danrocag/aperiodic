@@ -1,74 +1,84 @@
 import * as d3 from 'd3';
 import {Delaunay} from "d3-delaunay";
+import {Settings} from "./Settings";
 
-export function displayVoronoi(container: any, points: {x: number, y: number, label: string}[], L: number) {
-    const svg = container
-        .append("svg")
-        .attr("viewBox", [-L*0.9, -L*0.9, 2*L*0.9, 2*L*0.9])
-        .attr("width", 800)
-        .attr("height", 800)
-
-    let voronoi = Delaunay
-        .from(points, d => d.x, d => d.y)
-        .voronoi([-L*0.9, -L*0.9, L*0.9, L*0.9]);
-
-    const cell = svg.append("g")
-        .attr("fill", "none")
-        .selectAll("path")
-        .data(points)
-        .join("path")
-        .attr("d", (d, i) => voronoi.renderCell(i))
-        .attr("fill", (d, i) => d3.schemeCategory10[i % 7])
-
-    const mesh = svg.append("path")
-        .attr("fill", "none")
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.01)
-        .attr("d", voronoi.render());
-
-    const circle = svg.append("g")
-        .selectAll("circle")
-        .data(points)
-        .join("circle")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", 0.1)
-        .append("svg:title")
-        .text(d => d.label);
+export interface Visualization<Input> {
+    compute(input : Input) : void;
 }
 
-export function displayDelaunay(container, points: {x: number, y: number, label: string}[], L: number) {
+export interface Point2DPlus {
+    x: number;
+    y: number;
+    label: string;
+    color: number;
+}
 
-    const svg = container
-        .append("svg")
-        .attr("viewBox", [-L*0.9, -L*0.9, 2*L*0.9, 2*L*0.9])
-        .attr("width", 800)
-        .attr("height", 800)
+export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
+    constructor(private _container : any, private _settings : Settings, points : Point2DPlus[]) {
+        this.compute_init(points);
+    }
 
-    let delaunay = Delaunay
-        .from(points, d => d.x, d => d.y)
+    private _svg? : any;
+    _cell : any;
+    _mesh : any;
+    _circle : any;
+    compute_init(points: Point2DPlus[]): void {
+        this._svg = this._container
+            .append("svg")
+            .attr("viewBox", [-1, -1, 2, 2].map(x => 0.9*x*this.settings.L))
+            .attr("width", 800)
+            .attr("height", 800)
 
-    const triangles = svg.append("g")
-        .attr("fill", "none")
-        .selectAll("path")
-        .data(delaunay.triangles)
-        .join("path")
-        .attr("d", (d, i) => delaunay.renderTriangle(i))
-        .attr("fill", (d, i) => d3.schemeCategory10[i % 4])
+        let voronoi = Delaunay
+            .from(points, d => d.x, d => d.y)
+            .voronoi([-1,-1,1,1].map(x => 0.9*x*this.settings.L));
 
-    const mesh = svg.append("path")
-        .attr("fill", "none")
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.05)
-        .attr("d", delaunay.render());
+        this._cell = this._svg.append("g")
+            .attr("fill", "none")
+            .selectAll("path")
+            .data(points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})))
+            .join("path")
+            .attr("d", (d: { path: any; }) => d.path)
+            .attr("fill", (d: { color: any}) => d3.schemeCategory10[d.color])
 
-    const circle = svg.append("g")
-        .selectAll("circle")
-        .data(points)
-        .join("circle")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", 0.1)
-        .append("svg:title")
-        .text(d => d.label);
+        this._mesh = this._svg.append("path")
+            .attr("fill", "none")
+            .attr("stroke", "black")
+            .attr("stroke-width", 0.01)
+            .attr("d", voronoi.render());
+
+        this._circle = this._svg.append("g")
+            .selectAll("circle")
+            .data(points)
+            .join("circle")
+            .attr("cx", (d: { x: number; }) => d.x)
+            .attr("cy", (d: { y: number; }) => d.y)
+            .attr("r", 0.1)
+
+        this._circle
+            .append("svg:title")
+            .text(d => d.label);
+
+    }
+
+    compute(points: Point2DPlus[]) {
+        let voronoi = Delaunay
+            .from(points, d => d.x, d => d.y)
+            .voronoi([-1,-1,1,1].map(x => x*this.settings.L));
+
+        this._cell.data(points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})));
+        this._circle.data(points);
+        this._mesh.attr("d", voronoi.render())
+    }
+
+
+
+    get settings(): Settings {
+        return this._settings;
+    }
+
+    set settings(settings : Settings){
+        this._settings = settings;
+    }
+
 }

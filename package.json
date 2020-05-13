@@ -1,0 +1,32 @@
+{
+  "name": "aperiodic",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "src/scripts"
+  ],
+  "scripts": {
+    "start": "parcel serve src/index.html",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && cross-env NODE_ENV=production parcel build src/index.html --public-url .",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@josh-brown/vector": "^3.4.0",
+    "@types/jquery": "^3.3.38",
+    "bootstrap": "^4.5.0",
+    "d3": "^5.16.0",
+    "d3-delaunay": "^5.2.1",
+    "jquery": "^3.5.1",
+    "popper.js": "^1.16.1"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^4.3.2",
+    "@types/d3": "^5.7.2",
+    "@types/d3-delaunay": "^4.1.0",
+    "cross-env": "^5.2.0",
+    "gh-pages": "^1.2.0",
+    "parcel-bundler": "^1.9.7",
+    "typescript": "^3.8.3"
+  }
+}
