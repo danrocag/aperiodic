@@ -30442,7 +30442,7 @@ var VoronoiVisualization = /*#__PURE__*/function () {
       }, function (d) {
         return d.y;
       }).voronoi([-1, -1, 1, 1].map(function (x) {
-        return x * _this.settings.L;
+        return x * _this.settings.L1;
       }));
 
       this._cell.data(points.map(function (d, i) {
@@ -37058,7 +37058,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "56285" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "56779" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
