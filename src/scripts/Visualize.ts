@@ -23,13 +23,18 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
     _mesh : any;
     _circle : any;
     compute_init(points: Point2DPlus[]): void {
+        let viewbox = [-0.9*this.settings.L1, -0.9*this.settings.L2, 2*0.9*this.settings.L1, 2*0.9*this.settings.L2]
+        let voronoiArea = [-0.9*this.settings.L1, -0.9*this.settings.L2, 0.9*this.settings.L1, 0.9*this.settings.L2]
+
         this._svg = this._container
             .append("svg")
-            .attr("viewBox", [-1, -1, 2, 2].map(x => 0.9*x*this.settings.L))
+            .attr("viewBox",viewbox)
+            .attr("width", this.settings.width)
+            .attr("height", this.settings.height)
 
         let voronoi = Delaunay
             .from(points, d => d.x, d => d.y)
-            .voronoi([-1,-1,1,1].map(x => 0.9*x*this.settings.L));
+            .voronoi(voronoiArea);
 
         this._cell = this._svg.append("g")
             .attr("fill", "none")
@@ -62,7 +67,7 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
     compute(points: Point2DPlus[]) {
         let voronoi = Delaunay
             .from(points, d => d.x, d => d.y)
-            .voronoi([-1,-1,1,1].map(x => x*this.settings.L));
+            .voronoi([-1,-1,1,1].map(x => x*this.settings.L1));
 
         this._cell.data(points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})));
         this._circle.data(points);
