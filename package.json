@@ -9,7 +9,7 @@
     "start": "parcel serve src/index.html",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && cross-env NODE_ENV=production parcel build src/index.html --public-url .",
-    "deploy": "gh-pages -d dist"
+    "deploy": "tsc --noEmit && gh-pages -d dist"
   },
   "dependencies": {
     "@josh-brown/vector": "^3.4.0",

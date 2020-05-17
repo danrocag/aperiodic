@@ -31,7 +31,7 @@ let points = model_set.computePoints()
 const container = d3.select("#container")
 
 function vec_color(x : Vector<number>) : number {
-    return ((x.innerProduct(vec([2,-2,1,-1]))%8)+8)%8;
+    return 2 * (((x.innerProduct(vec([1,1,1,1]))%2)+2)%2);
 }
 let points2d: Point2DPlus[] = points
     .map(point => ({

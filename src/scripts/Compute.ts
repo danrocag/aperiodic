@@ -1,6 +1,5 @@
 import {Matrix, Vector, zeros} from '@josh-brown/vector';
 
-
 export class ModelSetRn {
     k: number;
     G: Matrix;

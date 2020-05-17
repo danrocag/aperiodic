@@ -26,8 +26,6 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
         this._svg = this._container
             .append("svg")
             .attr("viewBox", [-1, -1, 2, 2].map(x => 0.9*x*this.settings.L))
-            .attr("width", 800)
-            .attr("height", 800)
 
         let voronoi = Delaunay
             .from(points, d => d.x, d => d.y)
@@ -57,7 +55,7 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
 
         this._circle
             .append("svg:title")
-            .text(d => d.label);
+            .text((d:any) => d.label);
 
     }
 
