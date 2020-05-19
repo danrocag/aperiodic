@@ -30391,27 +30391,45 @@ var d3 = __importStar(require("d3"));
 
 var d3_delaunay_1 = require("d3-delaunay");
 
+function viewBox(settings) {
+  console.log(settings);
+  var pWidth = settings.physicalScale;
+  var pHeight = pWidth * settings.elementSize.y / settings.elementSize.x;
+  return [settings.physicalOrigin.x - pWidth / 2, settings.physicalOrigin.y - pHeight / 2, pWidth, pHeight];
+}
+
+function voronoiBox(settings) {
+  var pWidth = settings.physicalScale;
+  var pHeight = pWidth * settings.elementSize.y / settings.elementSize.x;
+  return [settings.physicalOrigin.x - pWidth / 2, settings.physicalOrigin.y - pHeight / 2, settings.physicalOrigin.x + pWidth / 2, settings.physicalOrigin.y + pHeight / 2];
+}
+
+function inBounds(settings, point) {
+  var pWidth = settings.physicalScale;
+  var pHeight = pWidth * settings.elementSize.y / settings.elementSize.x;
+  return Math.abs(point.x - settings.physicalOrigin.x) <= pWidth && Math.abs(point.y - settings.physicalOrigin.y) <= pHeight;
+}
+
 var VoronoiVisualization = /*#__PURE__*/function () {
-  function VoronoiVisualization(_container, _settings, points) {
+  function VoronoiVisualization(_container, settings, points) {
     _classCallCheck(this, VoronoiVisualization);
 
     this._container = _container;
-    this._settings = _settings;
+    this.settings = settings;
+    this._points = points;
     this.compute_init(points);
   }
 
   _createClass(VoronoiVisualization, [{
     key: "compute_init",
     value: function compute_init(points) {
-      var viewbox = [-0.9 * this.settings.L1, -0.9 * this.settings.L2, 2 * 0.9 * this.settings.L1, 2 * 0.9 * this.settings.L2];
-      var voronoiArea = [-0.9 * this.settings.L1, -0.9 * this.settings.L2, 0.9 * this.settings.L1, 0.9 * this.settings.L2];
-      this._svg = this._container.append("svg").attr("viewBox", viewbox).attr("width", this.settings.width).attr("height", this.settings.height);
-      var voronoi = d3_delaunay_1.Delaunay.from(points, function (d) {
+      this._svg = this._container.append("svg").attr("viewBox", viewBox(this.settings)).attr("width", this.settings.elementSize.x).attr("height", this.settings.elementSize.y);
+      var voronoi = d3_delaunay_1.Delaunay.from(this._points, function (d) {
         return d.x;
       }, function (d) {
         return d.y;
-      }).voronoi(voronoiArea);
-      this._cell = this._svg.append("g").attr("fill", "none").selectAll("path").data(points.map(function (d, i) {
+      }).voronoi(voronoiBox(this.settings));
+      this._cell = this._svg.append("g").attr("fill", "none").selectAll("path").data(this._points.map(function (d, i) {
         return {
           path: voronoi.renderCell(i),
           color: d.color
@@ -30422,7 +30440,7 @@ var VoronoiVisualization = /*#__PURE__*/function () {
         return d3.schemeCategory10[d.color];
       });
       this._mesh = this._svg.append("path").attr("fill", "none").attr("stroke", "black").attr("stroke-width", 0.01).attr("d", voronoi.render());
-      this._circle = this._svg.append("g").selectAll("circle").data(points).join("circle").attr("cx", function (d) {
+      this._circle = this._svg.append("g").selectAll("circle").data(this._points).join("circle").attr("cx", function (d) {
         return d.x;
       }).attr("cy", function (d) {
         return d.y;
@@ -30431,38 +30449,46 @@ var VoronoiVisualization = /*#__PURE__*/function () {
       this._circle.append("svg:title").text(function (d) {
         return d.label;
       });
+
+      var vThis = this;
+      var drag = d3.drag().on("drag", function (e) {
+        var dx = d3.event.dx / vThis.settings.elementSize.x * vThis.settings.physicalScale;
+        var dy = d3.event.dy / vThis.settings.elementSize.x * vThis.settings.physicalScale;
+        vThis.changeSettings({
+          physicalOrigin: {
+            x: vThis.settings.physicalOrigin.x - dx,
+            y: vThis.settings.physicalOrigin.y - dy
+          }
+        });
+      });
+
+      this._container.call(drag);
     }
   }, {
-    key: "compute",
-    value: function compute(points) {
-      var _this = this;
+    key: "changeSettings",
+    value: function changeSettings(new_settings) {
+      console.log(this.settings);
+      this.settings = Object.assign(Object.assign({}, this.settings), new_settings);
 
-      var voronoi = d3_delaunay_1.Delaunay.from(points, function (d) {
+      this._svg.attr("viewBox", viewBox(this.settings)).attr("width", this.settings.elementSize.x).attr("height", this.settings.elementSize.y);
+
+      var voronoi = d3_delaunay_1.Delaunay.from(this._points, function (d) {
         return d.x;
       }, function (d) {
         return d.y;
-      }).voronoi([-1, -1, 1, 1].map(function (x) {
-        return x * _this.settings.L1;
-      }));
+      }).voronoi(voronoiBox(this.settings));
+      console.log(voronoiBox(this.settings));
 
-      this._cell.data(points.map(function (d, i) {
+      this._cell.data(this._points.map(function (d, i) {
         return {
           path: voronoi.renderCell(i),
           color: d.color
         };
-      }));
-
-      this._circle.data(points);
+      })).attr("d", function (d) {
+        return d.path;
+      });
 
       this._mesh.attr("d", voronoi.render());
-    }
-  }, {
-    key: "settings",
-    get: function get() {
-      return this._settings;
-    },
-    set: function set(settings) {
-      this._settings = settings;
     }
   }]);
 
@@ -36979,7 +37005,7 @@ require("bootstrap/dist/css/bootstrap");
 var TAU = 2 * 3.141592;
 var width = innerWidth;
 var height = innerHeight;
-var L1 = 50;
+var L1 = 80;
 var L2 = L1 * height / width; // Aamann-Beenker tiling as constructed in https://arxiv.org/pdf/1906.10392.pdf
 
 var k = 2;
@@ -37024,12 +37050,18 @@ var points2d = points.map(function (point) {
     color: vec_color(point.total)
   };
 });
-var voronoi = new Visualize_1.VoronoiVisualization(container, {
-  L1: L1,
-  L2: L2,
-  width: width,
-  height: height
-}, points2d);
+var initSettings = {
+  elementSize: {
+    x: width,
+    y: height
+  },
+  physicalOrigin: {
+    x: 0,
+    y: 0
+  },
+  physicalScale: 20
+};
+var voronoi = new Visualize_1.VoronoiVisualization(container, initSettings, points2d);
 },{"d3":"../node_modules/d3/index.js","./Visualize":"scripts/Visualize.ts","@josh-brown/vector":"../node_modules/@josh-brown/vector/dist/index.js","./Compute":"scripts/Compute.ts","bootstrap/dist/css/bootstrap":"../node_modules/bootstrap/dist/css/bootstrap.css"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
@@ -37058,7 +37090,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "56779" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57441" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
