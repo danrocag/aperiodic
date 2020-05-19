@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import {Point2DPlus, VoronoiVisualization} from "./Visualize";
+import {Point2DPlus, VoronoiVisualization, Window2DSettings} from "./Visualize";
 import {mat, ones, vec, Vector} from "@josh-brown/vector";
 import {ModelSetRn} from "./Compute";
 import 'bootstrap/dist/css/bootstrap'
@@ -9,7 +9,7 @@ import $ from 'jquery';
 let TAU = 2*3.141592
 const width = innerWidth
 const height = innerHeight
-const L1 = 50
+const L1 = 80
 const L2 = L1*height/width
 // Aamann-Beenker tiling as constructed in https://arxiv.org/pdf/1906.10392.pdf
 let k: number = 2;
@@ -45,4 +45,10 @@ let points2d: Point2DPlus[] = points
         label: point.total.toArray().toString(),
         color: vec_color(point.total)}))
 
-let voronoi = new VoronoiVisualization(container, {L1: L1, L2: L2, width: width, height: height}, points2d);
+let initSettings: Window2DSettings = {
+    elementSize: {x: width, y: height},
+    physicalOrigin: {x: 0, y: 0},
+    physicalScale: 20,
+}
+
+let voronoi = new VoronoiVisualization(container, initSettings, points2d);

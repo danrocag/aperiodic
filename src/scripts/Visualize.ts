@@ -1,20 +1,55 @@
 import * as d3 from 'd3';
 import {Delaunay} from "d3-delaunay";
-import {Settings} from "./Settings";
+import set = Reflect.set;
 
-export interface Visualization<Input> {
-    compute(input : Input) : void;
+
+export interface Point2D {
+    x: number,
+    y: number,
 }
 
-export interface Point2DPlus {
-    x: number;
-    y: number;
+export interface Window2DSettings {
+    physicalScale: number
+    elementSize: Point2D,
+    physicalOrigin : Point2D;
+}
+
+function viewBox(settings: Window2DSettings) : [number, number, number, number] {
+    console.log(settings)
+    let pWidth = settings.physicalScale;
+    let pHeight = pWidth*settings.elementSize.y/settings.elementSize.x
+    return [
+        settings.physicalOrigin.x-pWidth/2,
+        settings.physicalOrigin.y-pHeight/2,
+        pWidth,
+        pHeight]
+}
+
+function voronoiBox(settings: Window2DSettings) : [number, number, number, number] {
+    let pWidth = settings.physicalScale;
+    let pHeight = pWidth*settings.elementSize.y/settings.elementSize.x
+    return [
+        settings.physicalOrigin.x-pWidth/2,
+        settings.physicalOrigin.y-pHeight/2,
+        settings.physicalOrigin.x+pWidth/2,
+        settings.physicalOrigin.y+pHeight/2]
+}
+
+function inBounds(settings: Window2DSettings, point: Point2D) : boolean {
+    let pWidth = settings.physicalScale;
+    let pHeight = pWidth*settings.elementSize.y/settings.elementSize.x
+    return Math.abs(point.x - settings.physicalOrigin.x) <= pWidth && Math.abs(point.y - settings.physicalOrigin.y) <= pHeight
+}
+
+export interface Point2DPlus extends Point2D{
     label: string;
     color: number;
 }
 
-export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
-    constructor(private _container : any, private _settings : Settings, points : Point2DPlus[]) {
+export class VoronoiVisualization {
+    private _points: Point2DPlus[];
+    constructor(private _container : any, private settings : Window2DSettings, points : Point2DPlus[]) {
+        this._points = points;
         this.compute_init(points);
     }
 
@@ -23,23 +58,21 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
     _mesh : any;
     _circle : any;
     compute_init(points: Point2DPlus[]): void {
-        let viewbox = [-0.9*this.settings.L1, -0.9*this.settings.L2, 2*0.9*this.settings.L1, 2*0.9*this.settings.L2]
-        let voronoiArea = [-0.9*this.settings.L1, -0.9*this.settings.L2, 0.9*this.settings.L1, 0.9*this.settings.L2]
-
         this._svg = this._container
             .append("svg")
-            .attr("viewBox",viewbox)
-            .attr("width", this.settings.width)
-            .attr("height", this.settings.height)
+            .attr("viewBox", viewBox(this.settings))
+            .attr("width", this.settings.elementSize.x)
+            .attr("height", this.settings.elementSize.y)
 
         let voronoi = Delaunay
-            .from(points, d => d.x, d => d.y)
-            .voronoi(voronoiArea);
+            .from(this._points,
+                    d => d.x, d => d.y)
+            .voronoi(voronoiBox(this.settings));
 
         this._cell = this._svg.append("g")
             .attr("fill", "none")
             .selectAll("path")
-            .data(points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})))
+            .data(this._points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})))
             .join("path")
             .attr("d", (d: { path: any; }) => d.path)
             .attr("fill", (d: { color: any}) => d3.schemeCategory10[d.color])
@@ -52,7 +85,7 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
 
         this._circle = this._svg.append("g")
             .selectAll("circle")
-            .data(points)
+            .data(this._points)
             .join("circle")
             .attr("cx", (d: { x: number; }) => d.x)
             .attr("cy", (d: { y: number; }) => d.y)
@@ -62,26 +95,36 @@ export class VoronoiVisualization implements Visualization<Point2DPlus[]> {
             .append("svg:title")
             .text((d:any) => d.label);
 
+        let vThis = this
+        let drag = d3.drag()
+            .on("drag", function (e) {
+                let dx = d3.event.dx/vThis.settings.elementSize.x*vThis.settings.physicalScale
+                let dy = d3.event.dy/vThis.settings.elementSize.x*vThis.settings.physicalScale
+                vThis.changeSettings({
+                    physicalOrigin: {
+                        x: vThis.settings.physicalOrigin.x - dx,
+                        y: vThis.settings.physicalOrigin.y - dy,
+                    }
+                })
+            })
+        this._container.call(drag)
     }
 
-    compute(points: Point2DPlus[]) {
+    changeSettings(new_settings: Partial<Window2DSettings>) {
+        console.log(this.settings)
+        this.settings = {...this.settings, ...new_settings}
+        this._svg
+            .attr("viewBox", viewBox(this.settings))
+            .attr("width", this.settings.elementSize.x)
+            .attr("height", this.settings.elementSize.y)
         let voronoi = Delaunay
-            .from(points, d => d.x, d => d.y)
-            .voronoi([-1,-1,1,1].map(x => x*this.settings.L1));
-
-        this._cell.data(points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})));
-        this._circle.data(points);
-        this._mesh.attr("d", voronoi.render())
+            .from(this._points,
+                d => d.x, d => d.y)
+            .voronoi(voronoiBox(this.settings));
+        console.log(voronoiBox(this.settings))
+        this._cell
+            .data(this._points.map((d, i) => ({path: voronoi.renderCell(i), color: d.color})))
+            .attr("d", (d: { path: any; }) => d.path)
+        this._mesh.attr("d", voronoi.render());
     }
-
-
-
-    get settings(): Settings {
-        return this._settings;
-    }
-
-    set settings(settings : Settings){
-        this._settings = settings;
-    }
-
 }
