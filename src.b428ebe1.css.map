@@ -1,0 +1,1 @@
+{"version":3,"sources":["index.css"],"names":[],"mappings":"AAMA,qBACI,KAAM,CACN,MAAO,CACP,cACJ","file":"src.b428ebe1.css","sourceRoot":"../src","sourcesContent":["#container {\n    top: 0;\n    left: 0;\n    position: fixed;\n}\n\n#controls {\n    top: 0;\n    left: 0;\n    position: fixed;\n}"]}

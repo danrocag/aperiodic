@@ -30411,25 +30411,62 @@ function inBounds(settings, point) {
 }
 
 var VoronoiVisualization = /*#__PURE__*/function () {
-  function VoronoiVisualization(_container, settings, points) {
+  function VoronoiVisualization(_container, width, height) {
     _classCallCheck(this, VoronoiVisualization);
 
     this._container = _container;
-    this.settings = settings;
-    this._points = points;
-    this.compute_init(points);
+    this._points = [];
+    this.settings = {
+      elementSize: {
+        x: width,
+        y: height
+      },
+      physicalOrigin: {
+        x: 0,
+        y: 0
+      },
+      physicalScale: 20
+    };
+    this._svg = this._container.append("svg").attr("viewBox", viewBox(this.settings)).attr("width", this.settings.elementSize.x).attr("height", this.settings.elementSize.y).attr("preserveAspectRatio", "xMinYMin meet");
+    this._cell = this._svg.append("g").attr("fill", "none").selectAll("path");
+    this._mesh = this._svg.append("path").attr("fill", "none").attr("stroke", "black").attr("stroke-width", 0.01);
+    this._circle = this._svg.append("g").selectAll("circle").append("svg:title").text(function (d) {
+      return d.label;
+    });
+    var vThis = this;
+    var drag = d3.drag().on("drag", function (e) {
+      var dx = d3.event.dx / vThis.settings.elementSize.x * vThis.settings.physicalScale;
+      var dy = d3.event.dy / vThis.settings.elementSize.x * vThis.settings.physicalScale;
+      vThis.updateSettings({
+        physicalOrigin: {
+          x: vThis.settings.physicalOrigin.x - dx,
+          y: vThis.settings.physicalOrigin.y - dy
+        }
+      });
+    });
+
+    this._container.call(drag);
   }
 
   _createClass(VoronoiVisualization, [{
-    key: "compute_init",
-    value: function compute_init(points) {
-      this._svg = this._container.append("svg").attr("viewBox", viewBox(this.settings)).attr("width", this.settings.elementSize.x).attr("height", this.settings.elementSize.y);
-      var voronoi = d3_delaunay_1.Delaunay.from(this._points, function (d) {
+    key: "visiblePoints",
+    value: function visiblePoints() {
+      var _this = this;
+
+      return this._points.filter(function (p) {
+        return inBounds(_this.settings, p);
+      });
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      var voronoi = d3_delaunay_1.Delaunay.from(this.visiblePoints(), function (d) {
         return d.x;
       }, function (d) {
         return d.y;
       }).voronoi(voronoiBox(this.settings));
-      this._cell = this._svg.append("g").attr("fill", "none").selectAll("path").data(this._points.map(function (d, i) {
+
+      this._cell.data(this.visiblePoints().map(function (d, i) {
         return {
           path: voronoi.renderCell(i),
           color: d.color
@@ -30439,56 +30476,30 @@ var VoronoiVisualization = /*#__PURE__*/function () {
       }).attr("fill", function (d) {
         return d3.schemeCategory10[d.color];
       });
-      this._mesh = this._svg.append("path").attr("fill", "none").attr("stroke", "black").attr("stroke-width", 0.01).attr("d", voronoi.render());
-      this._circle = this._svg.append("g").selectAll("circle").data(this._points).join("circle").attr("cx", function (d) {
+
+      this._mesh.attr("d", voronoi.render());
+
+      this._circle.data(this.visiblePoints()).join("circle").attr("cx", function (d) {
         return d.x;
       }).attr("cy", function (d) {
         return d.y;
       }).attr("r", 0.1);
-
-      this._circle.append("svg:title").text(function (d) {
-        return d.label;
-      });
-
-      var vThis = this;
-      var drag = d3.drag().on("drag", function (e) {
-        var dx = d3.event.dx / vThis.settings.elementSize.x * vThis.settings.physicalScale;
-        var dy = d3.event.dy / vThis.settings.elementSize.x * vThis.settings.physicalScale;
-        vThis.changeSettings({
-          physicalOrigin: {
-            x: vThis.settings.physicalOrigin.x - dx,
-            y: vThis.settings.physicalOrigin.y - dy
-          }
-        });
-      });
-
-      this._container.call(drag);
     }
   }, {
-    key: "changeSettings",
-    value: function changeSettings(new_settings) {
+    key: "updatePoints",
+    value: function updatePoints(points) {
+      this._points = points;
+      this.update();
+    }
+  }, {
+    key: "updateSettings",
+    value: function updateSettings(new_settings) {
       console.log(this.settings);
       this.settings = Object.assign(Object.assign({}, this.settings), new_settings);
 
       this._svg.attr("viewBox", viewBox(this.settings)).attr("width", this.settings.elementSize.x).attr("height", this.settings.elementSize.y);
 
-      var voronoi = d3_delaunay_1.Delaunay.from(this._points, function (d) {
-        return d.x;
-      }, function (d) {
-        return d.y;
-      }).voronoi(voronoiBox(this.settings));
-      console.log(voronoiBox(this.settings));
-
-      this._cell.data(this._points.map(function (d, i) {
-        return {
-          path: voronoi.renderCell(i),
-          color: d.color
-        };
-      })).attr("d", function (d) {
-        return d.path;
-      });
-
-      this._mesh.attr("d", voronoi.render());
+      this.update();
     }
   }]);
 
@@ -36769,20 +36780,6 @@ __export(require("./utilities/prettyPrint"));
 },{"./applications/calculus/FiniteDifferences":"../node_modules/@josh-brown/vector/dist/applications/calculus/FiniteDifferences.js","./applications/machine-learning/GradientDescent":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/GradientDescent.js","./applications/machine-learning/kernels/GaussianKernel":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/kernels/GaussianKernel.js","./applications/machine-learning/kernels/LinearKernel":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/kernels/LinearKernel.js","./applications/machine-learning/kernels/RadialBasisFunction":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/kernels/RadialBasisFunction.js","./applications/machine-learning/models/LinearRegressor":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/models/LinearRegressor.js","./applications/machine-learning/models/LogisticRegressionClassifier":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/models/LogisticRegressionClassifier.js","./applications/machine-learning/models/SupportVectorMachineClassifier":"../node_modules/@josh-brown/vector/dist/applications/machine-learning/models/SupportVectorMachineClassifier.js","./applications/statistics/DescriptiveStatistics":"../node_modules/@josh-brown/vector/dist/applications/statistics/DescriptiveStatistics.js","./applications/statistics/LeastSquares":"../node_modules/@josh-brown/vector/dist/applications/statistics/LeastSquares.js","./applications/statistics/PrincipalComponentAnalysis":"../node_modules/@josh-brown/vector/dist/applications/statistics/PrincipalComponentAnalysis.js","./decompositions/CholeskyDecomposition":"../node_modules/@josh-brown/vector/dist/decompositions/CholeskyDecomposition.js","./decompositions/LUDecomposition":"../node_modules/@josh-brown/vector/dist/decompositions/LUDecomposition.js","./decompositions/QRDecomposition":"../node_modules/@josh-brown/vector/dist/decompositions/QRDecomposition.js","./decompositions/SingularValueDecomposition":"../node_modules/@josh-brown/vector/dist/decompositions/SingularValueDecomposition.js","./eigenvalues/Eigenvalues":"../node_modules/@josh-brown/vector/dist/eigenvalues/Eigenvalues.js","./operations/Products":"../node_modules/@josh-brown/vector/dist/operations/Products.js","./operations/Determinant":"../node_modules/@josh-brown/vector/dist/operations/Determinant.js","./operations/Exponential":"../node_modules/@josh-brown/vector/dist/operations/Exponential.js","./operations/GaussJordan":"../node_modules/@josh-brown/vector/dist/operations/GaussJordan.js","./operations/Norms":"../node_modules/@josh-brown/vector/dist/operations/Norms.js","./operations/RowOperations":"../node_modules/@josh-brown/vector/dist/operations/RowOperations.js","./types/matrix/ArrayMatrix":"../node_modules/@josh-brown/vector/dist/types/matrix/ArrayMatrix.js","./types/matrix/ComplexMatrix":"../node_modules/@josh-brown/vector/dist/types/matrix/ComplexMatrix.js","./types/matrix/FloatMatrix":"../node_modules/@josh-brown/vector/dist/types/matrix/FloatMatrix.js","./types/matrix/MatrixBuilder":"../node_modules/@josh-brown/vector/dist/types/matrix/MatrixBuilder.js","./types/matrix/NumberMatrix":"../node_modules/@josh-brown/vector/dist/types/matrix/NumberMatrix.js","./types/matrix/SparseMatrix":"../node_modules/@josh-brown/vector/dist/types/matrix/SparseMatrix.js","./types/matrix/SparseNumberMatrix":"../node_modules/@josh-brown/vector/dist/types/matrix/SparseNumberMatrix.js","./types/scalar/ComplexNumber":"../node_modules/@josh-brown/vector/dist/types/scalar/ComplexNumber.js","./types/scalar/ComplexNumberOperations":"../node_modules/@josh-brown/vector/dist/types/scalar/ComplexNumberOperations.js","./types/scalar/NumberOperations":"../node_modules/@josh-brown/vector/dist/types/scalar/NumberOperations.js","./types/scalar/ScalarOperations":"../node_modules/@josh-brown/vector/dist/types/scalar/ScalarOperations.js","./types/vector/ArrayVector":"../node_modules/@josh-brown/vector/dist/types/vector/ArrayVector.js","./types/vector/ComplexVector":"../node_modules/@josh-brown/vector/dist/types/vector/ComplexVector.js","./types/vector/FloatVector":"../node_modules/@josh-brown/vector/dist/types/vector/FloatVector.js","./types/vector/NumberVector":"../node_modules/@josh-brown/vector/dist/types/vector/NumberVector.js","./types/vector/SparseNumberVector":"../node_modules/@josh-brown/vector/dist/types/vector/SparseNumberVector.js","./types/vector/SparseVector":"../node_modules/@josh-brown/vector/dist/types/vector/SparseVector.js","./types/vector/VectorBuilder":"../node_modules/@josh-brown/vector/dist/types/vector/VectorBuilder.js","./utilities/MatrixProperties":"../node_modules/@josh-brown/vector/dist/utilities/MatrixProperties.js","./utilities/aliases":"../node_modules/@josh-brown/vector/dist/utilities/aliases.js","./utilities/prettyPrint":"../node_modules/@josh-brown/vector/dist/utilities/prettyPrint.js"}],"scripts/Compute.ts":[function(require,module,exports) {
 "use strict";
 
-function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
-
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
-
-function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
-function _createForOfIteratorHelper(o) { if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (o = _unsupportedIterableToArray(o))) { var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e2) { throw _e2; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var it, normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e3) { didErr = true; err = _e3; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
-
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
@@ -36796,105 +36793,130 @@ Object.defineProperty(exports, "__esModule", {
 var vector_1 = require("@josh-brown/vector");
 
 var ModelSetRn = /*#__PURE__*/function () {
-  function ModelSetRn(k, G, H, WG, WH) {
+  function ModelSetRn(k, G, H, WH) {
     _classCallCheck(this, ModelSetRn);
 
     this.k = k;
     this.G = G;
     this.H = H;
-    this.WG = WG;
     this.WH = WH;
-    this.computed_vertices = new Map();
+    this.computed_vertices = new Set();
   }
 
   _createClass(ModelSetRn, [{
+    key: "visited",
+    value: function visited(x) {
+      return this.computed_vertices.has(JSON.stringify(x.toArray()));
+    }
+  }, {
+    key: "visit",
+    value: function visit(x) {
+      this.computed_vertices.add(JSON.stringify(x.toArray()));
+    }
+  }, {
     key: "W",
     value: function W(p) {
-      return this.WG(this.G.apply(p)) && this.WH(this.H.apply(p));
+      return this.WH(this.H.apply(p));
     }
-  }, {
-    key: "get_vertex",
-    value: function get_vertex(x) {
-      return this.computed_vertices.get(JSON.stringify(x.toArray()));
-    }
-  }, {
-    key: "set_vertex",
-    value: function set_vertex(x, info) {
-      this.computed_vertices.set(JSON.stringify(x.toArray()), info);
-    }
-  }, {
-    key: "explore",
-    value: function explore(p) {
-      var computed = this.get_vertex(p);
-
-      if (computed == undefined) {
-        if (!this.W(p)) {
-          this.set_vertex(p, {
-            in_set: false
-          });
-          return false;
+    /*
+    private explore(p: Vector, WG: (q: Vector) => boolean): boolean {
+        let computed = this.get_vertex(p);
+        if (computed == undefined) {
+            if (!this.W(p, WG)) {
+                this.set_vertex(p, {in_set: false})
+                return false
+            } else {
+                this.set_vertex(p, {in_set: true, neighbors: [], total: p})
+                let neighbors: Vector[] = [];
+                let builder = zeros(this.k).builder();
+                for (let i = 0; i < this.k; i++) {
+                    let dir = builder.elementaryVector(this.k, i);
+                    if (this.explore(p.add(dir), WG)) {
+                        neighbors.push(p.add(dir));
+                    }
+                    if (this.explore(p.add(dir.scalarMultiply(-1)), WG)) {
+                        neighbors.push(p.add(dir.scalarMultiply(-1)));
+                    }
+                }
+                this.set_vertex(p, {in_set: true, neighbors: neighbors, total: p})
+                return true
+            }
         } else {
-          this.set_vertex(p, {
-            in_set: true,
-            neighbors: [],
-            total: p
-          });
-          var neighbors = [];
-          var builder = vector_1.zeros(this.k).builder();
-
-          for (var i = 0; i < this.k; i++) {
-            var dir = builder.elementaryVector(this.k, i);
-
-            if (this.explore(p.add(dir))) {
-              neighbors.push(p.add(dir));
-            }
-
-            if (this.explore(p.add(dir.scalarMultiply(-1)))) {
-              neighbors.push(p.add(dir.scalarMultiply(-1)));
-            }
-          }
-
-          this.set_vertex(p, {
-            in_set: true,
-            neighbors: neighbors,
-            total: p
-          });
-          return true;
+            return computed.in_set;
         }
-      } else {
-        return computed.in_set;
+    }*/
+    // Returns all vectors on the model set, from a given point p
+
+  }, {
+    key: "unvisited_neighbors",
+    value: function unvisited_neighbors(p) {
+      var neighbors = [];
+      var builder = vector_1.zeros(this.k).builder();
+
+      for (var i = 0; i < this.k; i++) {
+        var dir = builder.elementaryVector(this.k, i);
+
+        if (this.W(p.add(dir)) && !this.visited(p.add(dir))) {
+          neighbors.push(p.add(dir));
+          this.visit(p.add(dir));
+        }
+
+        if (this.W(p.add(dir.scalarMultiply(-1))) && !this.visited(p.add(dir.scalarMultiply(-1)))) {
+          neighbors.push(p.add(dir.scalarMultiply(-1)));
+          this.visit(p.add(dir.scalarMultiply(-1)));
+        }
       }
+
+      return neighbors;
     }
   }, {
-    key: "model_set_from",
-    value: function model_set_from(p) {
-      this.explore(p);
-      var output = [];
+    key: "points",
+    value: function points(p, N) {
+      var _this = this;
 
-      var _iterator = _createForOfIteratorHelper(this.computed_vertices),
-          _step;
-
-      try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var _step$value = _slicedToArray(_step.value, 2),
-              vector = _step$value[0],
-              info = _step$value[1];
-
-          if (info.in_set) {
-            output.push({
-              neighbors: info.neighbors,
-              physical: this.G.apply(info.total),
-              total: info.total
-            });
-          }
-        }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
+      if (!this.W(p)) {
+        return null;
       }
 
-      return output;
+      var all_points = [p];
+      var unvisited_points = [p];
+      this.visit(p);
+
+      var _loop = function _loop() {
+        if (unvisited_points.length == 0) {
+          return "break";
+        }
+
+        var new_unvisited_points = [];
+        unvisited_points.map(function (p) {
+          return _this.visit(p);
+        });
+        unvisited_points.map(function (p) {
+          return _this.unvisited_neighbors(p);
+        }).map(function (n) {
+          new_unvisited_points = new_unvisited_points.concat(n);
+        });
+        all_points = all_points.concat(new_unvisited_points);
+        unvisited_points = new_unvisited_points;
+      };
+
+      while (all_points.length < N) {
+        var _ret = _loop();
+
+        if (_ret === "break") break;
+      }
+
+      return all_points.map(function (p) {
+        return {
+          physical: _this.G.apply(p),
+          total: p
+        };
+      });
+    }
+  }], [{
+    key: "fromDescription",
+    value: function fromDescription(desc) {
+      return new ModelSetRn(desc.k, desc.G, desc.H, desc.WH);
     }
   }]);
 
@@ -36975,7 +36997,42 @@ module.exports = reloadCSS;
         module.hot.dispose(reloadCSS);
         module.hot.accept(reloadCSS);
       
-},{"_css_loader":"../node_modules/parcel-bundler/src/builtins/css-loader.js"}],"scripts/index.ts":[function(require,module,exports) {
+},{"_css_loader":"../node_modules/parcel-bundler/src/builtins/css-loader.js"}],"scripts/Tilings.ts":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+}); // Aamann-Beenker tiling as constructed in https://arxiv.org/pdf/1906.10392.pdf
+
+var vector_1 = require("@josh-brown/vector");
+
+var TAU = 2 * 3.141592;
+exports.aamann_beenker = {
+  k: 4,
+  G: vector_1.mat([0, 1, 2, 3].map(function (k) {
+    return k * TAU / 8;
+  }).map(function (theta) {
+    return [Math.cos(theta), Math.sin(theta)];
+  })).transpose(),
+  H: vector_1.mat([0, 3, 6, 9].map(function (k) {
+    return k * TAU / 8;
+  }).map(function (theta) {
+    return [Math.cos(theta), Math.sin(theta)];
+  })).transpose(),
+  WH: function WH(x) {
+    var axes = vector_1.mat([0, 1, 2, 3].map(function (k) {
+      return k * TAU / 8;
+    }).map(function (theta) {
+      return [Math.cos(theta), Math.sin(theta)];
+    }));
+    var r = 1 / (2 * Math.tan(TAU / 16)); // radius of octagon with unit side length
+
+    return axes.apply(x).toArray().every(function (c) {
+      return -r < c && c < r;
+    });
+  }
+};
+},{"@josh-brown/vector":"../node_modules/@josh-brown/vector/dist/index.js"}],"scripts/index.ts":[function(require,module,exports) {
 "use strict";
 
 var __importStar = this && this.__importStar || function (mod) {
@@ -37002,23 +37059,12 @@ var Compute_1 = require("./Compute");
 
 require("bootstrap/dist/css/bootstrap");
 
-var TAU = 2 * 3.141592;
+var Tilings_1 = require("./Tilings");
+
 var width = innerWidth;
 var height = innerHeight;
-var L1 = 80;
-var L2 = L1 * height / width; // Aamann-Beenker tiling as constructed in https://arxiv.org/pdf/1906.10392.pdf
-
-var k = 2;
-var G = vector_1.mat([0, 1, 2, 3].map(function (k) {
-  return k * TAU / 8;
-}).map(function (theta) {
-  return [Math.cos(theta), Math.sin(theta)];
-})).transpose();
-var H = vector_1.mat([0, 3, 6, 9].map(function (k) {
-  return k * TAU / 8;
-}).map(function (theta) {
-  return [Math.cos(theta), Math.sin(theta)];
-})).transpose();
+var L2 = 20;
+var L1 = L2 * width / height;
 
 function WG(x) {
   return [x.toArray()[0] / L1, x.toArray()[1] / L2].every(function (c) {
@@ -37026,17 +37072,12 @@ function WG(x) {
   });
 }
 
-function WH(x) {
-  var r = 1 / (2 * Math.tan(TAU / 16)); // radius of octagon with unit side length
+var model_set = Compute_1.ModelSetRn.fromDescription(Tilings_1.aamann_beenker);
+var points = model_set.points(vector_1.vec([0, 0, 0, 0]), 5000);
 
-  return G.transpose().apply(x).toArray().every(function (c) {
-    return -r < c && c < r;
-  });
+if (points == null) {
+  throw Error("[0,0,0,0] not in the set");
 }
-
-var model_set = new Compute_1.ModelSetRn(k + 2, G, H, WG, WH);
-var points = model_set.model_set_from(vector_1.vec([0, 0, 0, 0]));
-var container = d3.select("#container");
 
 function vec_color(x) {
   return 2 * ((x.innerProduct(vector_1.vec([1, 1, 1, 1])) % 2 + 2) % 2);
@@ -37050,19 +37091,16 @@ var points2d = points.map(function (point) {
     color: vec_color(point.total)
   };
 });
-var initSettings = {
-  elementSize: {
-    x: width,
-    y: height
-  },
-  physicalOrigin: {
-    x: 0,
-    y: 0
-  },
-  physicalScale: 20
-};
-var voronoi = new Visualize_1.VoronoiVisualization(container, initSettings, points2d);
-},{"d3":"../node_modules/d3/index.js","./Visualize":"scripts/Visualize.ts","@josh-brown/vector":"../node_modules/@josh-brown/vector/dist/index.js","./Compute":"scripts/Compute.ts","bootstrap/dist/css/bootstrap":"../node_modules/bootstrap/dist/css/bootstrap.css"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+var container = d3.select("#container");
+var voronoi = new Visualize_1.VoronoiVisualization(container, width, height);
+var patterns = [{
+  name: "Aamann-Beenker"
+}];
+var controls = d3.select("#controls").append("div").append("select").selectAll("option").data(patterns).join("option").text(function (d) {
+  return d.name;
+});
+voronoi.updatePoints(points2d);
+},{"d3":"../node_modules/d3/index.js","./Visualize":"scripts/Visualize.ts","@josh-brown/vector":"../node_modules/@josh-brown/vector/dist/index.js","./Compute":"scripts/Compute.ts","bootstrap/dist/css/bootstrap":"../node_modules/bootstrap/dist/css/bootstrap.css","./Tilings":"scripts/Tilings.ts"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -37090,7 +37128,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57441" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "63872" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
